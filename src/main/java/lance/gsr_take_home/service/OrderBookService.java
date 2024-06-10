@@ -3,44 +3,66 @@ package lance.gsr_take_home.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lance.gsr_take_home.client.KrakenWebSocketClient;
+import lance.gsr_take_home.model.Candle;
 import lance.gsr_take_home.model.Order;
 import lance.gsr_take_home.model.OrderBook;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @Getter
+@Slf4j
 public class OrderBookService {
-    private final OrderBook orderBook = new OrderBook();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final OrderBook orderBook;
+    private final ObjectMapper objectMapper;
+
+    private Candle currentCandle;
+    private Instant currentMinute;
+    private int ticks = 0;
+
+    public OrderBookService() {
+        this.orderBook = new OrderBook();
+        this.objectMapper = new ObjectMapper();
+    }
 
     public void handleTextMessage(String message) throws JsonProcessingException {
         JsonNode jsonNode = objectMapper.readTree(message);
-        if (jsonNode.has("type")) {
-            String type = jsonNode.get("type").asText();
-            if ("snapshot".equals(type)) {
-                handleSnapshotMessage(jsonNode);
-            } else if ("update".equals(type)) {
-                handleUpdateMessage(jsonNode);
-            }
+//        log.info(jsonNode.toString());
+        var type = jsonNode.get("type");
+        var data = jsonNode.path("data");
+        var channel = jsonNode.path("channel");
+
+        if (data.isEmpty() || !channel.asText().equals("book")) return;
+
+        if (type.asText().equals("snapshot")) {
+            handleSnapshotMessage(data);
+        } else if (type.asText().equals("update")) {
+            handleUpdateMessage(data);
         }
+
     }
 
-    private void handleSnapshotMessage(JsonNode jsonNode) {
-        JsonNode data = jsonNode.get("data").get(0);
-        List<Order> bids = parseOrders(data.get("bids"));
-        List<Order> asks = parseOrders(data.get("asks"));
+    private void handleSnapshotMessage(JsonNode data) {
+//        log.info("SNAPSHOT: {}", data.toString());
+        List<Order> bids = parseOrders(data.get(0).get("bids"));
+        List<Order> asks = parseOrders(data.get(0).get("asks"));
         orderBook.updateSnapshot(bids, asks);
     }
 
-    private void handleUpdateMessage(JsonNode jsonNode) {
-        JsonNode data = jsonNode.get("data").get(0);
-        updateOrders("bid", data.get("bids"));
-        updateOrders("ask", data.get("asks"));
+    private void handleUpdateMessage(JsonNode data) {
+        String timestampStr = data.get(0).get("timestamp").asText();
+        Instant timestamp = Instant.parse(timestampStr);
+
+        updateOrders("bid", data.get(0).get("bids"));
+        updateOrders("ask", data.get(0).get("asks"));
+
+        computeCandleData(timestamp);
     }
 
     private List<Order> parseOrders(JsonNode ordersJson) {
@@ -59,5 +81,30 @@ public class OrderBookService {
             double qty = orderJson.get("qty").asDouble();
             orderBook.updateOrder(side, price, qty);
         });
+    }
+
+    private void computeCandleData(Instant timestamp) {
+//        log.info("Computing candle data for timestamp {}", timestamp);
+        if (currentMinute == null || !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinute)) {
+            if (currentCandle != null) {
+                log.info(currentCandle.toString());
+            }
+
+            double highestBid = orderBook.getBids().firstEntry().getKey();
+            double lowestAsk = orderBook.getAsks().firstEntry().getKey();
+            double midPrice = (highestBid + lowestAsk) / 2;
+
+            currentMinute = timestamp.truncatedTo(ChronoUnit.MINUTES);
+            currentCandle = new Candle(currentMinute, midPrice, midPrice, midPrice, midPrice, 0);
+        }
+
+        double highestBid = orderBook.getBids().firstEntry().getKey();
+        double lowestAsk = orderBook.getAsks().firstEntry().getKey();
+        double midPrice = (highestBid + lowestAsk) / 2;
+
+        currentCandle.setClose(midPrice);
+        currentCandle.setHigh(Math.max(currentCandle.getHigh(), midPrice));
+        currentCandle.setLow(Math.min(currentCandle.getLow(), midPrice));
+        currentCandle.setTicks(currentCandle.getTicks() + 1);
     }
 }

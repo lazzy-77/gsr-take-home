@@ -2,16 +2,16 @@ package lance.gsr_take_home.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import java.time.Instant;
 
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
 public class Candle {
-    private long timestamp;
-    private double open;
-    private double close;
-    private double high;
-    private double low;
-    private int ticks;
+        private Instant timestamp;
+        private double open;
+        private double high;
+        private double low;
+        private double close;
+        private int ticks;
 }
