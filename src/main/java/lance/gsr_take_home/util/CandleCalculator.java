@@ -1,6 +1,5 @@
 package lance.gsr_take_home.util;
 
-import lance.gsr_take_home.model.Tick;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;

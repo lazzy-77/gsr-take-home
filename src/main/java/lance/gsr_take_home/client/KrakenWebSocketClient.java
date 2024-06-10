@@ -1,9 +1,9 @@
 package lance.gsr_take_home.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import lance.gsr_take_home.service.DataProcessingService;
 import lance.gsr_take_home.service.OrderBookService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.net.http.WebSocket;
 import java.time.LocalDateTime;
@@ -15,13 +15,11 @@ import java.util.concurrent.CountDownLatch;
 public class KrakenWebSocketClient implements WebSocket.Listener {
 
     private final CountDownLatch latch;
-    private final DataProcessingService dataProcessingService;
+    @Autowired
     private final OrderBookService orderBookService;
 
-    public KrakenWebSocketClient(CountDownLatch latch, DataProcessingService dataProcessingService,
-                                 OrderBookService orderBookService) {
+    public KrakenWebSocketClient(CountDownLatch latch, OrderBookService orderBookService) {
         this.latch = latch;
-        this.dataProcessingService = dataProcessingService;
         this.orderBookService = orderBookService;
     }
 
@@ -41,7 +39,7 @@ public class KrakenWebSocketClient implements WebSocket.Listener {
 
         // Process the data
         try {
-            orderBookService.onReceiveText(data.toString());
+            orderBookService.handleTextMessage(data.toString());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
