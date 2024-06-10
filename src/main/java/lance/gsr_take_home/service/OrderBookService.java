@@ -8,14 +8,11 @@ import lance.gsr_take_home.model.Candle;
 import lance.gsr_take_home.model.OrderBookEntry;
 import lance.gsr_take_home.model.Tick;
 import lance.gsr_take_home.util.CandleCalculator;
-import lance.gsr_take_home.util.TimeUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,32 +69,48 @@ public class OrderBookService {
         var bids = data.get(0).get("bids");
         var timestamp = data.get(0).get("timestamp");
 
-        if (Stream.of(asks, bids).allMatch(Objects::isNull) || timestamp == null) return;
+        if (timestamp == null || Stream.of(asks, bids).anyMatch(Objects::isNull) ||
+                asks.isEmpty() || bids.isEmpty() || isAsksAndBidsValid(asks, bids)) return;
+        log.info("ASKS: {}, BIDS: {}", asks, bids);
 
-        log.info("Data: {}", data);
         createOrderBookEntry(convertTimestampToMinuteInEpoch(timestamp), asks, bids);
     }
 
     private OrderBookEntry createOrderBookEntry(long timestamp, JsonNode asks, JsonNode bids) {
-        log.info("asks: {}, bids: {}, timestamp: {}", asks, bids, timestamp);
         var asksList = objectMapper.convertValue(asks, new TypeReference<List<Tick>>() {});
         var bidsList = objectMapper.convertValue(bids, new TypeReference<List<Tick>>() {});
 
-        var highestBid = bidsList.stream().map(Tick::price).mapToDouble(Double::doubleValue).max().getAsDouble();
-        var lowestAsk = asksList.stream().map(Tick::price).mapToDouble(Double::doubleValue).min().getAsDouble();
+        var highestBid = bidsList.stream().map(Tick::price).mapToDouble(Double::doubleValue).max();
+        var lowestAsk = asksList.stream().map(Tick::price).mapToDouble(Double::doubleValue).min();
 
-        log.info("To be added: highest ask: {}, lowest ask: {}", highestBid, lowestAsk);
+        log.info("To be added: highest ask: {}, lowest ask: {}", highestBid.orElse(0.0), lowestAsk.orElse(0.0));
 
         orderBook.computeIfAbsent(timestamp,
                 k -> new OrderBookEntry(new ArrayList<>(), new ArrayList<>())).getAsks().addAll(asksList);
         orderBook.computeIfAbsent(timestamp,
                 k -> new OrderBookEntry(new ArrayList<>(), new ArrayList<>())).getBids().addAll(bidsList);
 
-
-        var currentMidPrice = CandleCalculator.midPrice(orderBook.get(timestamp));
+        var currentMidPrice = CandleCalculator.midPrice(asksList, bidsList);
         log.info("{}: Asks size: {}, Bids size: {}", timestamp, orderBook.get(timestamp).getAsks().size(),
                 orderBook.get(timestamp).getBids().size());
         log.info("Current mid price: {}", currentMidPrice);
         return orderBook.get(timestamp);
+    }
+
+    private boolean isAsksAndBidsValid(JsonNode asks, JsonNode bids) {
+        // both asks and bids are populated
+        // highest bid < lowest ask
+        if (Stream.of(asks, bids).anyMatch(Objects::isNull) ||
+                asks.isEmpty() || bids.isEmpty()) return false;
+
+        var asksList = objectMapper.convertValue(asks, new TypeReference<List<Tick>>() {});
+        var bidsList = objectMapper.convertValue(bids, new TypeReference<List<Tick>>() {});
+
+        var highestBid = bidsList.stream().map(Tick::price).mapToDouble(Double::doubleValue).max();
+        var lowestAsk = asksList.stream().map(Tick::price).mapToDouble(Double::doubleValue).min();
+
+        if (highestBid.isEmpty() && lowestAsk.isEmpty()) return false;
+
+        return highestBid.getAsDouble() < lowestAsk.getAsDouble();
     }
 }
