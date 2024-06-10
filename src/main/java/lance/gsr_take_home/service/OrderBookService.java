@@ -54,7 +54,7 @@ public class OrderBookService {
 
         if (type.asText().equals("snapshot")) {
             initialiseOrderBookOnSnapshot(data);
-        } else {
+        } else if (type.asText().equals("update")) {
             updateOrderBook(data);
         }
     }
