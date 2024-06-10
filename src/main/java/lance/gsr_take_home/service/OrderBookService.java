@@ -53,13 +53,13 @@ public class OrderBookService {
         if (data.isEmpty()) return;
 
         if (type.asText().equals("snapshot")) {
-            initialiseOrderBook(data);
+            initialiseOrderBookOnSnapshot(data);
         } else {
             updateOrderBook(data);
         }
     }
 
-    public void initialiseOrderBook(JsonNode snapshot) {
+    public void initialiseOrderBookOnSnapshot(JsonNode snapshot) {
         long currentMinute = getCurrentTimeAsMinuteInEpoch();
 
         var asks = snapshot.get(0).get("asks");
