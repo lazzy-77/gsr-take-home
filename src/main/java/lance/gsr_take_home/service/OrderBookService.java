@@ -33,7 +33,6 @@ public class OrderBookService {
 
     public void handleTextMessage(String message) throws JsonProcessingException {
         JsonNode jsonNode = objectMapper.readTree(message);
-//        log.info(jsonNode.toString());
         var type = jsonNode.get("type");
         var data = jsonNode.path("data");
         var channel = jsonNode.path("channel");
@@ -62,7 +61,46 @@ public class OrderBookService {
         updateOrders("bid", data.get(0).get("bids"));
         updateOrders("ask", data.get(0).get("asks"));
 
+        cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk();
         computeCandleData(timestamp);
+    }
+
+    private void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() {
+        var highestBidPrice = orderBook.getBids().firstEntry().getKey();
+        var lowestAskPrice = orderBook.getAsks().firstEntry().getKey();
+        if (highestBidPrice >= lowestAskPrice) {
+            orderBook.getBids().keySet().stream().filter(bid -> bid >= lowestAskPrice)
+                    .forEach(price -> orderBook.updateOrder("bid", price, 0.0));
+        }
+    }
+
+    public void computeCandleData(Instant timestamp) {
+        // if currentMinute is null (first minute of run) or passed in timestamp is not the same as the currentMinute (minute has passed)
+        if (currentMinute == null || !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinute)) {
+            //if there is a candle log it/process it/etc
+            if (currentCandle != null) {
+                log.info(currentCandle.toString());
+            }
+
+            double midPrice = midPrice(orderBook);
+
+            currentMinute = timestamp.truncatedTo(ChronoUnit.MINUTES);
+            currentCandle = new Candle(currentMinute, midPrice, midPrice, midPrice, midPrice, 0);
+        }
+        // if it is still the same minute
+
+        double midPrice = midPrice(orderBook);
+
+        currentCandle.setHigh(Math.max(currentCandle.getHigh(), midPrice));
+        currentCandle.setLow(Math.min(currentCandle.getLow(), midPrice));
+        currentCandle.setClose(midPrice);
+        currentCandle.setTicks(currentCandle.getTicks() + 1);
+    }
+
+    private double midPrice(OrderBook orderBook) {
+        double highestBid = orderBook.getBids().firstEntry().getKey();
+        double lowestAsk = orderBook.getAsks().firstEntry().getKey();
+        return (highestBid + lowestAsk) / 2;
     }
 
     private List<Order> parseOrders(JsonNode ordersJson) {
@@ -81,30 +119,5 @@ public class OrderBookService {
             double qty = orderJson.get("qty").asDouble();
             orderBook.updateOrder(side, price, qty);
         });
-    }
-
-    private void computeCandleData(Instant timestamp) {
-//        log.info("Computing candle data for timestamp {}", timestamp);
-        if (currentMinute == null || !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinute)) {
-            if (currentCandle != null) {
-                log.info(currentCandle.toString());
-            }
-
-            double highestBid = orderBook.getBids().firstEntry().getKey();
-            double lowestAsk = orderBook.getAsks().firstEntry().getKey();
-            double midPrice = (highestBid + lowestAsk) / 2;
-
-            currentMinute = timestamp.truncatedTo(ChronoUnit.MINUTES);
-            currentCandle = new Candle(currentMinute, midPrice, midPrice, midPrice, midPrice, 0);
-        }
-
-        double highestBid = orderBook.getBids().firstEntry().getKey();
-        double lowestAsk = orderBook.getAsks().firstEntry().getKey();
-        double midPrice = (highestBid + lowestAsk) / 2;
-
-        currentCandle.setClose(midPrice);
-        currentCandle.setHigh(Math.max(currentCandle.getHigh(), midPrice));
-        currentCandle.setLow(Math.min(currentCandle.getLow(), midPrice));
-        currentCandle.setTicks(currentCandle.getTicks() + 1);
     }
 }
