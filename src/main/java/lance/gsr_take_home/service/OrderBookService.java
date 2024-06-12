@@ -68,8 +68,11 @@ public class OrderBookService {
         var highestBidPrice = orderBook.getBids().firstEntry().getKey();
         var lowestAskPrice = orderBook.getAsks().firstEntry().getKey();
         if (highestBidPrice >= lowestAskPrice) {
+            log.info("CLEAN NEEDED");
+            //TODO: This fails when called, investigate.
             orderBook.getBids().keySet().stream().filter(bid -> bid >= lowestAskPrice)
                     .forEach(price -> orderBook.updateOrder("bid", price, 0.0));
+            log.info("CLEAN COMPLETE");
         }
     }
 
