@@ -75,6 +75,12 @@ public class OrderBookService {
     }
 
     public void computeCandleData(Instant timestamp) {
+        //check there's at least one bid AND one ask
+        if (orderBook.getBids().isEmpty() || orderBook.getAsks().isEmpty()) {
+            return;
+        }
+
+        cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk();
         // if currentMinute is null (first minute of run) or passed in timestamp is not the same as the currentMinute (minute has passed)
         if (currentMinute == null || !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinute)) {
             //if there is a candle log it/process it/etc
