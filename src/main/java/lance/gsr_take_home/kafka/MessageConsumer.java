@@ -34,7 +34,7 @@ public class MessageConsumer {
             while (true) {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
                 for (ConsumerRecord<String, String> record : records) {
-                    log.info("Consumed record with value {}", record.value());
+                    log.info("---- CONSUMER -> CONSUMED RECORD: {} ----", record.value());
                 }
             }
         } catch (Exception e) {

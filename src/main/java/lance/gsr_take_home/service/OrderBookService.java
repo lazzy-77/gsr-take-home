@@ -3,6 +3,7 @@ package lance.gsr_take_home.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lance.gsr_take_home.kafka.MessageProducer;
 import lance.gsr_take_home.model.Candle;
 import lance.gsr_take_home.model.Order;
 import lance.gsr_take_home.model.OrderBook;
@@ -21,6 +22,7 @@ import java.util.List;
 public class OrderBookService {
     private final OrderBook orderBook;
     private final ObjectMapper objectMapper;
+    private final MessageProducer producer;
 
     private Candle currentCandle;
     private Instant currentMinute;
@@ -29,6 +31,7 @@ public class OrderBookService {
     public OrderBookService() {
         this.orderBook = new OrderBook();
         this.objectMapper = new ObjectMapper();
+        this.producer = new MessageProducer("kraken");
     }
 
     public void handleTextMessage(String message) throws JsonProcessingException {
@@ -89,7 +92,14 @@ public class OrderBookService {
         if (currentMinute == null || !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinute)) {
             //if there is a candle log it/process it/etc
             if (currentCandle != null) {
-                log.info(currentCandle.toString());
+                log.info("Created new candle: {}", currentCandle);
+                var res = producer.sendMessage(currentCandle.toString());
+                try {
+                    Thread.sleep(1000);
+                    log.info("---- PRODUCER -> MESSAGE SENT: {} ----", res.isDone());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             double midPrice = midPrice(orderBook);
