@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lance.gsr_take_home.model.Candle;
 import lance.gsr_take_home.model.Order;
 import lance.gsr_take_home.model.OrderBook;
-import lombok.Getter;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@Getter
+@Data
 @Slf4j
 public class OrderBookService {
     private final OrderBook orderBook;
@@ -37,7 +37,8 @@ public class OrderBookService {
         var data = jsonNode.path("data");
         var channel = jsonNode.path("channel");
 
-        if (data.isEmpty() || !channel.asText().equals("book")) return;
+        if (data.isNull() || data.isEmpty() || type.isNull() || !type.isTextual() ||
+                !channel.asText().equals("book")) return;
 
         if (type.asText().equals("snapshot")) {
             handleSnapshotMessage(data);
@@ -64,14 +65,15 @@ public class OrderBookService {
         computeCandleData(timestamp);
     }
 
-    private void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() {
+    public void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() {
         var highestBidPrice = orderBook.getBids().firstEntry().getKey();
         var lowestAskPrice = orderBook.getAsks().firstEntry().getKey();
         if (highestBidPrice >= lowestAskPrice) {
-            log.info("CLEAN NEEDED");
-            //TODO: This fails when called, investigate.
-            orderBook.getBids().keySet().stream().filter(bid -> bid >= lowestAskPrice)
-                    .forEach(price -> orderBook.updateOrder("bid", price, 0.0));
+            log.info("ERROR: Highest bid price is greater than or equal to lowest ask price");
+            log.info("Highest Bid Price: {}, Lowest ask Price: {}", highestBidPrice, lowestAskPrice);
+            log.info("CLEANING ORDER BOOK");
+            var bidsToUpdate = orderBook.getBids().keySet().stream().filter(bid -> bid >= lowestAskPrice).toList();
+            bidsToUpdate.forEach(price -> orderBook.updateOrder("bid", price, 0.0));
             log.info("CLEAN COMPLETE");
         }
     }
