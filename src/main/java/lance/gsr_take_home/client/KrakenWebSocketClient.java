@@ -33,11 +33,6 @@ public class KrakenWebSocketClient implements WebSocket.Listener {
 
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime now = LocalDateTime.now();
-//        log.info("{}: {}", dtf.format(now), data);
-
-        // Process the data
         try {
             orderBookService.handleTextMessage(data.toString());
         } catch (JsonProcessingException e) {

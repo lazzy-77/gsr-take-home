@@ -52,7 +52,6 @@ public class OrderBookService {
     }
 
     private void handleSnapshotMessage(JsonNode data) {
-//        log.info("SNAPSHOT: {}", data.toString());
         List<Order> bids = parseOrders(data.get(0).get("bids"));
         List<Order> asks = parseOrders(data.get(0).get("asks"));
         orderBook.updateSnapshot(bids, asks);
@@ -72,12 +71,12 @@ public class OrderBookService {
         var highestBidPrice = orderBook.getBids().firstEntry().getKey();
         var lowestAskPrice = orderBook.getAsks().firstEntry().getKey();
         if (highestBidPrice >= lowestAskPrice) {
-            log.info("ERROR: Highest bid price is greater than or equal to lowest ask price");
-            log.info("Highest Bid Price: {}, Lowest ask Price: {}", highestBidPrice, lowestAskPrice);
-            log.info("CLEANING ORDER BOOK");
+            log.info("---- ERROR: Highest bid price is greater than or equal to lowest ask price ----");
+            log.info("---- Highest Bid Price: {}, Lowest ask Price: {} ----", highestBidPrice, lowestAskPrice);
+            log.info("---- CLEANING ORDER BOOK ----");
             var bidsToUpdate = orderBook.getBids().keySet().stream().filter(bid -> bid >= lowestAskPrice).toList();
             bidsToUpdate.forEach(price -> orderBook.updateOrder("bid", price, 0.0));
-            log.info("CLEAN COMPLETE");
+            log.info("---- CLEAN COMPLETE ----");
         }
     }
 
@@ -92,7 +91,7 @@ public class OrderBookService {
         if (currentMinute == null || !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinute)) {
             //if there is a candle log it/process it/etc
             if (currentCandle != null) {
-                log.info("Created new candle: {}", currentCandle);
+                log.info("---- Created new candle: {} ----", currentCandle);
                 var res = producer.sendMessage(currentCandle.toString());
                 try {
                     Thread.sleep(1000);
