@@ -61,7 +61,6 @@ public class OrderBookService {
         updateOrders("bid", data.get(0).get("bids"));
         updateOrders("ask", data.get(0).get("asks"));
 
-        cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk();
         computeCandleData(timestamp);
     }
 
