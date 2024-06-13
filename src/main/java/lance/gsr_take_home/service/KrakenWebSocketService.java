@@ -1,10 +1,10 @@
 package lance.gsr_take_home.service;
 
-import jakarta.annotation.PostConstruct;
 import lance.gsr_take_home.config.WebSocketProperties;
 import lance.gsr_take_home.client.KrakenWebSocketClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -30,7 +30,7 @@ public class KrakenWebSocketService {
         this.properties = properties;
     }
 
-    @PostConstruct
+    @Async
     public void connect() {
         try {
             WebSocket ws = httpClient.newWebSocketBuilder().buildAsync(URI.create(properties.getUrl()), krakenWebSocketClient)

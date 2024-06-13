@@ -8,7 +8,9 @@ import lance.gsr_take_home.model.Candle;
 import lance.gsr_take_home.model.Order;
 import lance.gsr_take_home.model.OrderBook;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -19,20 +21,17 @@ import java.util.List;
 @Service
 @Data
 @Slf4j
+@RequiredArgsConstructor
 public class OrderBookService {
-    private final OrderBook orderBook;
-    private final ObjectMapper objectMapper;
-    private final MessageProducer producer;
+    private final OrderBook orderBook = new OrderBook();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private MessageProducer producer;
 
     private Candle currentCandle;
     private Instant currentMinute;
     private int ticks = 0;
-
-    public OrderBookService() {
-        this.orderBook = new OrderBook();
-        this.objectMapper = new ObjectMapper();
-        this.producer = new MessageProducer("kraken");
-    }
 
     public void handleTextMessage(String message) throws JsonProcessingException {
         JsonNode jsonNode = objectMapper.readTree(message);
@@ -92,13 +91,7 @@ public class OrderBookService {
             //if there is a candle log it/process it/etc
             if (currentCandle != null) {
                 log.info("---- Created new candle: {} ----", currentCandle);
-                var res = producer.sendMessage(currentCandle.toString());
-                try {
-                    Thread.sleep(1000);
-                    log.info("---- PRODUCER -> MESSAGE SENT: {} ----", res.isDone());
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+                producer.sendMessage(currentCandle.toString());
             }
 
             double midPrice = midPrice(orderBook);
