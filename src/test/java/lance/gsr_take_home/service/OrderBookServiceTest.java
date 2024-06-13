@@ -1,8 +1,6 @@
 package lance.gsr_take_home.service;
 
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.org.apache.commons.lang3.tuple.ImmutablePair;
@@ -14,12 +12,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class OrderBookServiceTest {
     private OrderBookService orderBookService;
-    ObjectMapper objectMapper;
 
     @BeforeEach
     public void setUp() {
         orderBookService = new OrderBookService();
-        objectMapper = new ObjectMapper();
     }
 
     @Test
