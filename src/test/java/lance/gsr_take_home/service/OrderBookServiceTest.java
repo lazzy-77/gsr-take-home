@@ -19,7 +19,7 @@ public class OrderBookServiceTest {
     }
 
     @Test
-    public void shouldHandleSnapshotTextMessage() throws JsonProcessingException {
+    public void handleSnapshotTextMessage() throws JsonProcessingException {
         //given
         var snapshotMessage = "{\"channel\":\"book\",\"type\":\"snapshot\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3671.60,\"qty\":0.03455496}],\"asks\":[{\"price\":3673.55,\"qty\":0.14890467}],\"checksum\":3036778067}]}";
         var asks = new TreeMap<>();
@@ -36,7 +36,7 @@ public class OrderBookServiceTest {
     }
 
     @Test
-    public void shouldHandleUpdateTextMessage() throws JsonProcessingException {
+    public void handleUpdateTextMessage() throws JsonProcessingException {
         //given
         var snapshotMessage = "{\"channel\":\"book\",\"type\":\"snapshot\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3672.09,\"qty\":0.03455496}],\"asks\":[{\"price\":3673.55,\"qty\":0.14890467}],\"checksum\":3036778067}]}";
         var updateMessage = "{\"channel\":\"book\",\"type\":\"update\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3672.09,\"qty\":27.23240554}],\"asks\":[],\"checksum\":1211470590,\"timestamp\":\"2024-06-10T19:53:05.505924Z\"}]}";
@@ -51,7 +51,7 @@ public class OrderBookServiceTest {
     }
 
     @Test
-    public void shouldReturnIfDataIsEmptyTextMessage() {
+    public void returnIfDataIsEmptyTextMessage() {
         //given
         var message = "{\"channel\":\"book\",\"type\":\"update\",\"data\":[]} ";
         //when
@@ -60,7 +60,7 @@ public class OrderBookServiceTest {
     }
 
     @Test
-    public void shouldThrowInvalidJsonTextMessage() {
+    public void throwsWhenInvalidJsonTextMessage() {
         //given
         var invalidJson = "{";
         //when
@@ -69,7 +69,7 @@ public class OrderBookServiceTest {
     }
 
     @Test
-    public void shouldCleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() throws JsonProcessingException {
+    public void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() throws JsonProcessingException {
         //given
         var snapshotMessage = "{\"channel\":\"book\",\"type\":\"snapshot\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3671.60,\"qty\":0.03455496}],\"asks\":[{\"price\":3671.60,\"qty\":0.14890467}],\"checksum\":3036778067}]}";
         orderBookService.handleTextMessage(snapshotMessage);
