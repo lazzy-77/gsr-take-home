@@ -21,6 +21,7 @@ public class OrderBookServiceTest {
     @Test
     public void handleSnapshotTextMessage() throws JsonProcessingException {
         //given
+        var symbol = "ETH/USD";
         var snapshotMessage = "{\"channel\":\"book\",\"type\":\"snapshot\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3671.60,\"qty\":0.03455496}],\"asks\":[{\"price\":3673.55,\"qty\":0.14890467}],\"checksum\":3036778067}]}";
         var asks = new TreeMap<>();
         asks.put(3673.55, 0.14890467);
@@ -29,15 +30,16 @@ public class OrderBookServiceTest {
         //when
         orderBookService.handleTextMessage(snapshotMessage);
         //then
-        assertEquals(asks.size(), orderBookService.getOrderBook().getAsks().size());
-        assertEquals(asks, orderBookService.getOrderBook().getAsks());
-        assertEquals(bids.size(), orderBookService.getOrderBook().getBids().size());
-        assertEquals(bids, orderBookService.getOrderBook().getBids());
+        assertEquals(asks.size(), orderBookService.getOrderBookMap().get(symbol).getAsks().size());
+        assertEquals(asks, orderBookService.getOrderBookMap().get(symbol).getAsks());
+        assertEquals(bids.size(), orderBookService.getOrderBookMap().get(symbol).getBids().size());
+        assertEquals(bids, orderBookService.getOrderBookMap().get(symbol).getBids());
     }
 
     @Test
     public void handleUpdateTextMessage() throws JsonProcessingException {
         //given
+        var symbol = "ETH/USD";
         var snapshotMessage = "{\"channel\":\"book\",\"type\":\"snapshot\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3672.09,\"qty\":0.03455496}],\"asks\":[{\"price\":3673.55,\"qty\":0.14890467}],\"checksum\":3036778067}]}";
         var updateMessage = "{\"channel\":\"book\",\"type\":\"update\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3672.09,\"qty\":27.23240554}],\"asks\":[],\"checksum\":1211470590,\"timestamp\":\"2024-06-10T19:53:05.505924Z\"}]}";
         orderBookService.handleTextMessage(snapshotMessage);
@@ -46,8 +48,8 @@ public class OrderBookServiceTest {
         //when
         orderBookService.handleTextMessage(updateMessage);
         //then
-        assertEquals(bids.size(), orderBookService.getOrderBook().getBids().size());
-        assertEquals(bids, orderBookService.getOrderBook().getBids());
+        assertEquals(bids.size(), orderBookService.getOrderBookMap().get(symbol).getBids().size());
+        assertEquals(bids, orderBookService.getOrderBookMap().get(symbol).getBids());
     }
 
     @Test
@@ -71,25 +73,27 @@ public class OrderBookServiceTest {
     @Test
     public void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() throws JsonProcessingException {
         //given
+        var symbol = "ETH/USD";
         var snapshotMessage = "{\"channel\":\"book\",\"type\":\"snapshot\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3671.60,\"qty\":0.03455496}],\"asks\":[{\"price\":3671.60,\"qty\":0.14890467}],\"checksum\":3036778067}]}";
         orderBookService.handleTextMessage(snapshotMessage);
         //when
-        orderBookService.cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk();
+        orderBookService.cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk(orderBookService.getOrderBookMap().get(symbol));
         //then
-        assertEquals(0, orderBookService.getOrderBook().getBids().size());
+        assertEquals(0, orderBookService.getOrderBookMap().get(symbol).getBids().size());
     }
 
     @Test
     public void shouldNotCleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() throws JsonProcessingException {
         //given
+        var symbol = "ETH/USD";
         var snapshotMessage = "{\"channel\":\"book\",\"type\":\"snapshot\",\"data\":[{\"symbol\":\"ETH/USD\",\"bids\":[{\"price\":3671.59,\"qty\":0.03455496}],\"asks\":[{\"price\":3671.60,\"qty\":0.14890467}],\"checksum\":3036778067}]}";
         orderBookService.handleTextMessage(snapshotMessage);
         var entry = new ImmutablePair<>(3671.59, 0.03455496);
         //when
-        orderBookService.cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk();
+        orderBookService.cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk(orderBookService.getOrderBookMap().get(symbol));
         //then
-        assertEquals(1, orderBookService.getOrderBook().getBids().size());
-        assertEquals(entry ,orderBookService.getOrderBook().getBids().firstEntry());
+        assertEquals(1, orderBookService.getOrderBookMap().get(symbol).getBids().size());
+        assertEquals(entry ,orderBookService.getOrderBookMap().get(symbol).getBids().firstEntry());
     }
 
 }
