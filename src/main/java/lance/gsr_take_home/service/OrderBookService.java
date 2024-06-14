@@ -118,7 +118,7 @@ public class OrderBookService {
             double midPrice = midPrice(orderBook);
 
             currentMinuteMap.put(symbol, timestamp.truncatedTo(ChronoUnit.MINUTES));
-            currentCandleMap.put(symbol, new Candle(currentMinuteMap.get(symbol), midPrice, midPrice, midPrice, midPrice, 0));
+            currentCandleMap.put(symbol, new Candle(symbol, currentMinuteMap.get(symbol), midPrice, midPrice, midPrice, midPrice, 0));
         }
         // if it is still the same minute
 

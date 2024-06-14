@@ -8,6 +8,7 @@ import java.time.Instant;
 @Data
 @AllArgsConstructor
 public class Candle {
+        private String symbol;
         private Instant timestamp;
         private double open;
         private double high;
