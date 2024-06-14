@@ -9,8 +9,8 @@ import java.util.TreeMap;
 
 @Getter
 public class OrderBook {
-    private NavigableMap<Double, Double> bids = new TreeMap<>(Collections.reverseOrder());
-    private NavigableMap<Double, Double> asks = new TreeMap<>();
+    private final NavigableMap<Double, Double> bids = new TreeMap<>(Collections.reverseOrder());
+    private final NavigableMap<Double, Double> asks = new TreeMap<>();
 
     public synchronized void updateSnapshot(List<Order> newBids, List<Order> newAsks) {
         bids.clear();

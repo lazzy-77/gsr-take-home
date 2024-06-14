@@ -47,7 +47,6 @@ public class OrderBookService {
         if (dataList == null || dataList.isEmpty()) return;
 
         dataList.forEach(dataItem -> {
-//            log.info("DataItem: {}", dataItem.toString());
             if (dataItem == null || dataItem.isEmpty()) return;
 
             var symbol = dataItem.get("symbol").asText();
@@ -63,12 +62,6 @@ public class OrderBookService {
                 handleUpdateMessage(dataItem, orderBook, symbol);
             }
         });
-
-//        orderBookMap.forEach((symbol, orderBook) -> {
-//            log.info("OrderBook: {}", symbol);
-//            log.info("Bids: {}", orderBook.getBids().toString());
-//            log.info("Asks: {}", orderBook.getAsks().toString());
-//        });
     }
 
     void handleSnapshotMessage(JsonNode data, OrderBook orderBook) {
@@ -91,12 +84,12 @@ public class OrderBookService {
         var highestBidPrice = orderBook.getBids().firstEntry().getKey();
         var lowestAskPrice = orderBook.getAsks().firstEntry().getKey();
         if (highestBidPrice >= lowestAskPrice) {
-            log.info("---- ERROR: Highest bid price is greater than or equal to lowest ask price ----");
-            log.info("---- Highest Bid Price: {}, Lowest ask Price: {} ----", highestBidPrice, lowestAskPrice);
-            log.info("---- CLEANING ORDER BOOK ----");
+            log.debug("---- ERROR: Highest bid price is greater than or equal to lowest ask price ----");
+            log.debug("---- Highest Bid Price: {}, Lowest ask Price: {} ----", highestBidPrice, lowestAskPrice);
+            log.debug("---- CLEANING ORDER BOOK ----");
             var bidsToUpdate = orderBook.getBids().keySet().stream().filter(bid -> bid >= lowestAskPrice).toList();
             bidsToUpdate.forEach(price -> orderBook.updateOrder("bid", price, 0.0));
-            log.info("---- CLEAN COMPLETE ----");
+            log.debug("---- CLEAN COMPLETE ----");
         }
     }
 

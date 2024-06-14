@@ -1,7 +1,6 @@
 package lance.gsr_take_home.config;
 
 import lance.gsr_take_home.client.KrakenWebSocketClient;
-import lance.gsr_take_home.model.OrderBook;
 import lance.gsr_take_home.service.OrderBookService;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
