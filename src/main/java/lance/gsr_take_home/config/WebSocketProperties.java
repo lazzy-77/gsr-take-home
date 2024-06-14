@@ -23,12 +23,27 @@ public class WebSocketProperties {
                     }
                 }
                 """;
+    private Integer depth; // Add the depth property
 
     @PostConstruct
     public void init() {
         String formattedPairs = pairs.stream()
                 .map(pair -> "\"" + pair + "\"")
                 .collect(Collectors.joining(","));
-        this.subscriptionMessage = String.format(subscriptionBody, formattedPairs);
+
+        if (depth != null) {
+            this.subscriptionBody = """
+                {
+                    "method":"subscribe",
+                    "params":{
+                        "channel":"book","symbol":[%s], "depth": %d
+                    }
+                }
+                """;
+            this.subscriptionMessage = String.format(subscriptionBody, formattedPairs, depth);
+        } else {
+            this.subscriptionMessage = String.format(subscriptionBody, formattedPairs);
+        }
     }
 }
+

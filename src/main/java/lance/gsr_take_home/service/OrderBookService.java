@@ -71,13 +71,13 @@ public class OrderBookService {
 //        });
     }
 
-    private void handleSnapshotMessage(JsonNode data, OrderBook orderBook) {
+    void handleSnapshotMessage(JsonNode data, OrderBook orderBook) {
         List<Order> bids = parseOrders(data.get("bids"));
         List<Order> asks = parseOrders(data.get("asks"));
         orderBook.updateSnapshot(bids, asks);
     }
 
-    private void handleUpdateMessage(JsonNode data, OrderBook orderBook, String symbol) {
+    void handleUpdateMessage(JsonNode data, OrderBook orderBook, String symbol) {
         String timestampStr = data.get("timestamp").asText();
         Instant timestamp = Instant.parse(timestampStr);
 
@@ -87,7 +87,7 @@ public class OrderBookService {
         computeCandleData(timestamp, orderBook, symbol);
     }
 
-    public void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk(OrderBook orderBook) {
+    void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk(OrderBook orderBook) {
         var highestBidPrice = orderBook.getBids().firstEntry().getKey();
         var lowestAskPrice = orderBook.getAsks().firstEntry().getKey();
         if (highestBidPrice >= lowestAskPrice) {
@@ -100,7 +100,7 @@ public class OrderBookService {
         }
     }
 
-    public void computeCandleData(Instant timestamp, OrderBook orderBook, String symbol) {
+    void computeCandleData(Instant timestamp, OrderBook orderBook, String symbol) {
         //check there's at least one bid AND one ask
         if (orderBook.getBids().isEmpty() || orderBook.getAsks().isEmpty()) {
             return;
@@ -132,13 +132,13 @@ public class OrderBookService {
         currentCandle.setTicks(currentCandle.getTicks() + 1);
     }
 
-    private double midPrice(OrderBook orderBook) {
+    double midPrice(OrderBook orderBook) {
         double highestBid = orderBook.getBids().firstEntry().getKey();
         double lowestAsk = orderBook.getAsks().firstEntry().getKey();
         return (highestBid + lowestAsk) / 2;
     }
 
-    private List<Order> parseOrders(JsonNode ordersJson) {
+    List<Order> parseOrders(JsonNode ordersJson) {
         List<Order> orders = new ArrayList<>();
         ordersJson.forEach(orderJson -> {
             double price = orderJson.get("price").asDouble();
@@ -148,7 +148,7 @@ public class OrderBookService {
         return orders;
     }
 
-    private void updateOrders(String side, JsonNode ordersJson, OrderBook orderBook) {
+    void updateOrders(String side, JsonNode ordersJson, OrderBook orderBook) {
         ordersJson.forEach(orderJson -> {
             double price = orderJson.get("price").asDouble();
             double qty = orderJson.get("qty").asDouble();
