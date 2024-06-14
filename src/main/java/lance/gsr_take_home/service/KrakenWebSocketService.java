@@ -12,6 +12,9 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.util.concurrent.CountDownLatch;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+import static org.springframework.util.CollectionUtils.isEmpty;
+
 @Service
 @Slf4j
 public class KrakenWebSocketService {
@@ -32,6 +35,10 @@ public class KrakenWebSocketService {
 
     @Async
     public void connect() {
+        if (isNullOrEmpty(properties.getUrl()) || isEmpty(properties.getPairs())) {
+            throw new IllegalArgumentException("A property(s) is missing, check configuration.");
+        }
+
         try {
             WebSocket ws = httpClient.newWebSocketBuilder().buildAsync(URI.create(properties.getUrl()), krakenWebSocketClient)
                     .join();
