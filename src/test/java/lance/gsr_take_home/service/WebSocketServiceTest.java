@@ -28,14 +28,12 @@ public class WebSocketServiceTest {
         webSocketService = new KrakenWebSocketService(httpClient, webSocketClient, countDownLatch, properties);
     }
 
-    //throws when no pair
     @Test
     public void throwsWhenNoPairs() {
         properties.setUrl("some.url");
         assertThrows(IllegalArgumentException.class, () -> webSocketService.connect());
     }
 
-    //throws when no url
     @Test
     public void throwsWhenNoUrl() {
         properties.setPairs(List.of("ETH/USD"));
