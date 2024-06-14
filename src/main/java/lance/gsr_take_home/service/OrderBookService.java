@@ -1,6 +1,7 @@
 package lance.gsr_take_home.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lance.gsr_take_home.kafka.MessageProducer;
@@ -16,22 +17,22 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Data
 @Slf4j
 @RequiredArgsConstructor
 public class OrderBookService {
-    private final OrderBook orderBook = new OrderBook();
+    private final Map<String, OrderBook> orderBookMap = new HashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Map<String, Candle> currentCandleMap = new HashMap<>();
+    private final Map<String, Instant> currentMinuteMap = new HashMap<>();
 
     @Autowired
     private MessageProducer producer;
-
-    private Candle currentCandle;
-    private Instant currentMinute;
-    private int ticks = 0;
 
     public void handleTextMessage(String message) throws JsonProcessingException {
         JsonNode jsonNode = objectMapper.readTree(message);
@@ -42,31 +43,51 @@ public class OrderBookService {
         if (data.isNull() || data.isEmpty() || type.isNull() || !type.isTextual() ||
                 !channel.asText().equals("book")) return;
 
-        if (type.asText().equals("snapshot")) {
-            handleSnapshotMessage(data);
-        } else if (type.asText().equals("update")) {
-            handleUpdateMessage(data);
-        }
+        List<JsonNode> dataList = objectMapper.treeToValue(data, new TypeReference<>() {});
+        if (dataList == null || dataList.isEmpty()) return;
 
+        dataList.forEach(dataItem -> {
+//            log.info("DataItem: {}", dataItem.toString());
+            if (dataItem == null || dataItem.isEmpty()) return;
+
+            var symbol = dataItem.get("symbol").asText();
+
+            if (!orderBookMap.containsKey(symbol)) {
+                orderBookMap.put(symbol, new OrderBook());
+            }
+            var orderBook = orderBookMap.get(symbol);
+
+            if (type.asText().equals("snapshot")) {
+                handleSnapshotMessage(dataItem, orderBook);
+            } else if (type.asText().equals("update")) {
+                handleUpdateMessage(dataItem, orderBook, symbol);
+            }
+        });
+
+//        orderBookMap.forEach((symbol, orderBook) -> {
+//            log.info("OrderBook: {}", symbol);
+//            log.info("Bids: {}", orderBook.getBids().toString());
+//            log.info("Asks: {}", orderBook.getAsks().toString());
+//        });
     }
 
-    private void handleSnapshotMessage(JsonNode data) {
-        List<Order> bids = parseOrders(data.get(0).get("bids"));
-        List<Order> asks = parseOrders(data.get(0).get("asks"));
+    private void handleSnapshotMessage(JsonNode data, OrderBook orderBook) {
+        List<Order> bids = parseOrders(data.get("bids"));
+        List<Order> asks = parseOrders(data.get("asks"));
         orderBook.updateSnapshot(bids, asks);
     }
 
-    private void handleUpdateMessage(JsonNode data) {
-        String timestampStr = data.get(0).get("timestamp").asText();
+    private void handleUpdateMessage(JsonNode data, OrderBook orderBook, String symbol) {
+        String timestampStr = data.get("timestamp").asText();
         Instant timestamp = Instant.parse(timestampStr);
 
-        updateOrders("bid", data.get(0).get("bids"));
-        updateOrders("ask", data.get(0).get("asks"));
+        updateOrders("bid", data.get("bids"), orderBook);
+        updateOrders("ask", data.get("asks"), orderBook);
 
-        computeCandleData(timestamp);
+        computeCandleData(timestamp, orderBook, symbol);
     }
 
-    public void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk() {
+    public void cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk(OrderBook orderBook) {
         var highestBidPrice = orderBook.getBids().firstEntry().getKey();
         var lowestAskPrice = orderBook.getAsks().firstEntry().getKey();
         if (highestBidPrice >= lowestAskPrice) {
@@ -79,29 +100,31 @@ public class OrderBookService {
         }
     }
 
-    public void computeCandleData(Instant timestamp) {
+    public void computeCandleData(Instant timestamp, OrderBook orderBook, String symbol) {
         //check there's at least one bid AND one ask
         if (orderBook.getBids().isEmpty() || orderBook.getAsks().isEmpty()) {
             return;
         }
 
-        cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk();
+        cleanOrderBookIfBidsGreaterThanOrEqualLowestAsk(orderBook);
         // if currentMinute is null (first minute of run) or passed in timestamp is not the same as the currentMinute (minute has passed)
-        if (currentMinute == null || !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinute)) {
+        if (!currentMinuteMap.containsKey(symbol)|| !timestamp.truncatedTo(ChronoUnit.MINUTES).equals(currentMinuteMap.get(symbol))) {
             //if there is a candle log it/process it/etc
-            if (currentCandle != null) {
-                log.info("---- Created new candle: {} ----", currentCandle);
-                producer.sendMessage(currentCandle.toString());
+            if (currentCandleMap.containsKey(symbol)) {
+                log.info("---- Created new candle: {} {} ----", symbol, currentCandleMap.get(symbol));
+                producer.sendMessage(currentCandleMap.get(symbol).toString());
             }
 
             double midPrice = midPrice(orderBook);
 
-            currentMinute = timestamp.truncatedTo(ChronoUnit.MINUTES);
-            currentCandle = new Candle(currentMinute, midPrice, midPrice, midPrice, midPrice, 0);
+            currentMinuteMap.put(symbol, timestamp.truncatedTo(ChronoUnit.MINUTES));
+            currentCandleMap.put(symbol, new Candle(currentMinuteMap.get(symbol), midPrice, midPrice, midPrice, midPrice, 0));
         }
         // if it is still the same minute
 
         double midPrice = midPrice(orderBook);
+
+        var currentCandle = currentCandleMap.get(symbol);
 
         currentCandle.setHigh(Math.max(currentCandle.getHigh(), midPrice));
         currentCandle.setLow(Math.min(currentCandle.getLow(), midPrice));
@@ -125,7 +148,7 @@ public class OrderBookService {
         return orders;
     }
 
-    private void updateOrders(String side, JsonNode ordersJson) {
+    private void updateOrders(String side, JsonNode ordersJson, OrderBook orderBook) {
         ordersJson.forEach(orderJson -> {
             double price = orderJson.get("price").asDouble();
             double qty = orderJson.get("qty").asDouble();
